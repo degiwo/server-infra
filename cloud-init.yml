@@ -1,0 +1,74 @@
+#cloud-config
+# Base setup of a new platform server (current Ubuntu LTS).
+# Paste into "Cloud config" when creating the server in the Hetzner Console.
+# Replace first: <ADMIN_SSH_PUBKEY>, <DEPLOY_SSH_PUBKEY>.
+# The intent of each block and its check are in runbook.md.
+
+# [R1] Users: personal admin with sudo, deploy user for CI
+users:
+  - name: admin
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - <ADMIN_SSH_PUBKEY>
+  - name: deploy
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - <DEPLOY_SSH_PUBKEY>
+
+# [R2] SSH key-only, no root login
+ssh_pwauth: false
+disable_root: true
+
+# [R3] Packages and automatic security updates
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - ufw
+  - unattended-upgrades
+  - restic
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-platform.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+  # [R5] Log rotation for all containers
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "3" }
+      }
+
+runcmd:
+  # [R4] Docker (official install script) and deploy user in the docker group
+  - "curl -fsSL https://get.docker.com | sh"
+  - "usermod -aG docker deploy"
+  - "usermod -aG docker admin"
+
+  # [R6] Firewall: SSH, HTTP, HTTPS only (in addition to the Hetzner firewall)
+  - "ufw default deny incoming"
+  - "ufw default allow outgoing"
+  - "ufw allow 22/tcp"
+  - "ufw allow 80/tcp"
+  - "ufw allow 443"
+  - "ufw --force enable"
+
+  # [R7] Directories
+  - "mkdir -p /srv/platform /srv/apps /srv/backups/dumps /srv/backups/snapshots"
+  - "chown admin:admin /srv/platform"
+  - "chown deploy:deploy /srv/apps /srv/backups/snapshots"
+  - "chmod 750 /srv/backups/dumps"
+
+  - "systemctl restart ssh"
