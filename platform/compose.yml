@@ -1,0 +1,30 @@
+# Platform services. Lives on the server in /srv/platform/.
+# Images are deliberately pinned; Dependabot proposes updates, rollout is manual.
+name: platform
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:2.13-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CADDY_INGRESS_NETWORKS: platform
+      CADDY_DOCKER_CADDYFILE_PATH: /etc/caddy/Caddyfile
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    networks:
+      - platform
+
+networks:
+  platform:
+    name: platform
+
+volumes:
+  # Certificates. Not backed up – Caddy fetches them again when needed.
+  caddy_data:

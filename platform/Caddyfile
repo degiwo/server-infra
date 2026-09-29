@@ -1,0 +1,10 @@
+# Base Caddyfile. caddy-docker-proxy merges the labels of all containers into it.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# remove this when test successful with `curl http://localhost`
+:80 {
+    respond "Caddy works!"
+}
