@@ -3,8 +3,3 @@
 {
 	email {$ACME_EMAIL}
 }
-
-# remove this when test successful with `curl http://localhost`
-:80 {
-    respond "Caddy works!"
-}
