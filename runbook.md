@@ -32,27 +32,24 @@ What cloud-init takes care of:
 - **Intent:** The contents of `platform/` live in `/srv/platform/`. Secrets are created only on the server, never in the repo.
 - **Command (2026-10):**
   ```sh
-  rsync -av --exclude '.env' --exclude 'authelia/users.yml' \
-    platform/ admin@<server>:/srv/platform/
+  rsync -av --exclude '.env' platform/ admin@<server>:/srv/platform/
   ```
-  Then on the server in `/srv/platform`:
-    1. Copy `.env.example` → `.env` and fill in (secrets: `openssl rand -hex 64`). `chmod 600 .env`.
-    2. Create the Authelia users file (Authelia does not start without it):
-    ```sh
-    docker compose run --rm authelia authelia crypto hash generate argon2
-    cp authelia/users.yml.example authelia/users.yml  # insert user + hash
-    chmod 600 authelia/users.yml
-    ```
+  Then on the server in `/srv/platform`: copy `.env.example` → `.env` and fill in (secrets: `openssl rand -hex 64`). `chmod 600 .env`.
 - **Check:** `docker compose -f /srv/platform/compose.yml config` runs without errors.
 
 ### S4 Start the platform
-- **Intent:** Caddy accepts requests and picks up containers via labels; Authelia serves the login page at `auth.apps.<domain>`.
+- **Intent:** Caddy accepts requests and picks up containers via labels; Authelia serves the login page at `auth.apps.<domain>` and reads users from LLDAP.
 - **Command (2026-10):** `cd /srv/platform && docker compose up -d`
-- **Check:** `docker compose ps` shows `caddy` as `running` and `authelia` as `healthy`; `https://auth.apps.<domain>` shows the login page.
+- **Check:** `docker compose ps` shows `caddy` as `running`, `lldap` and `authelia` as `healthy`; `https://users.apps.<domain>` asks for the Authelia login, then shows the LLDAP UI. Both logins work with `admin` and `LLDAP_ADMIN_PASSWORD`.
+
+### S5 Personal user
+- **Intent:** You work with your own user, `admin` stays the technical account Authelia uses (don't change the password of `admin`).
+- **Command (2026-10):** In the LLDAP UI at `https://users.apps.<domain>` (as `admin`): create your own user, add it to the group `lldap_admin`.
+- **Check:** Log out, log in to `https://users.apps.<domain>` with your own user - you can see and edit all users.
 
 
-### S5 End-to-end check with a throwaway container
-- **Intent:** An app gets HTTPS just by its labels, and a protected is only reachable after login. One login is valid for all `*.apps.<domain>`.
+### S6 End-to-end check with a throwaway container
+- **Intent:** An app gets HTTPS just by its labels, and a protected app is only reachable after login. One login is valid for all `*.apps.<domain>`.
 - **Command (2026-10):** On the server, first unprotected:
   ```sh
   docker run -d --rm --name whoami --network platform \

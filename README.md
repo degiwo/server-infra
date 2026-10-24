@@ -19,12 +19,17 @@ Work through `runbook.md` from top to bottom.
 ```
 Internet ──► Caddy (80/443, reads Docker labels)
                │  forward_auth
-               ├──► Authelia   (auth.apps.<domain>)
+               ├──► Authelia   (auth.apps.<domain>) ──LDAP──► LLDAP
+               ├──► LLDAP UI   (users.apps.<domain>)
                └──► Apps       (<app>.apps.<domain>)
 ```
 
+## User management
+
+Manage users and groups in the LLDAP web UI at `https://users.<APPS_DOMAIN>`, which is protected by Authelia. Authelia reads user accounts from LLDAP over LDAP, so changes made in LLDAP are used for app logins.
+
 ## Opt-in protection of apps
 
-An app is only behind the Authelia login if its container has the label `caddy.import=authelia`. Without it, the app is public accessible.
+An app is only behind the Authelia login if its container has the label `caddy.import=authelia`. Without it, the app is publicly accessible.
 
 The label references the `(authelia)` snippet in the Caddyfile by name.

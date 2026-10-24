@@ -3,11 +3,15 @@
 # Secrets are not in here - they come from .env as AUTHELIA_* variables.
 
 authentication_backend:
-  # No mail. so no reset links
+  # No mail, so no reset links
   password_reset:
     disable: true
-  file:
-    path: /config/users.yml
+  ldap:
+    implementation: lldap
+    address: ldap://lldap:3890
+    base_dn: '{{ env "LDAP_BASE_DN" }}'
+    # Bind user for Authelia, password from AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD
+    user: 'uid=admin,ou=people,{{ env "LDAP_BASE_DN" }}'
 
 access_control:
   default_policy: one_factor
