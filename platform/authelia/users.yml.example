@@ -1,0 +1,7 @@
+# Template for users.yml, see runbook
+
+users:
+  alice:
+    displayname: 'Alice'
+    email: 'alice@example.com'
+    password: '$argon2id$...'

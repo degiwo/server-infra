@@ -20,6 +20,24 @@ services:
       - caddy_data:/data
     networks:
       - platform
+  
+  authelia:
+    image: authelia/authelia:4.39
+    restart: unless-stopped
+    environment:
+      X_AUTHELIA_CONFIG_FILTERS: template
+      APPS_DOMAIN: ${APPS_DOMAIN:?}
+      AUTHELIA_SESSION_SECRET: ${AUTHELIA_SESSION_SECRET:?}
+      AUTHELIA_STORAGE_ENCRYPTION_KEY: ${AUTHELIA_STORAGE_ENCRYPTION_KEY:?}
+    volumes:
+      # configuration.yml (versioned) and users.yml (only on the server)
+      - ./authelia:/config
+      - authelia_data:/data
+    labels:
+      caddy: auth.${APPS_DOMAIN}
+      caddy.reverse_proxy: "{{upstreams 9091}}"
+    networks:
+      - platform
 
 networks:
   platform:
@@ -28,3 +46,5 @@ networks:
 volumes:
   # Certificates. Not backed up – Caddy fetches them again when needed.
   caddy_data:
+  # Authelia DB (sessions, login attempts).
+  authelia_data:

@@ -1,0 +1,28 @@
+# Authelia configuration
+# {{ env "APPS_DOMAIN"}} is filled in at the start (X_AUTHELIA_CONFIG_FILTERS=...).
+# Secrets are not in here - they come from .env as AUTHELIA_* variables.
+
+authentication_backend:
+  # No mail. so no reset links
+  password_reset:
+    disable: true
+  file:
+    path: /config/users.yml
+
+access_control:
+  default_policy: one_factor
+
+session:
+  cookies:
+    # One login for all apps below this domain
+    - domain: '{{ env "APPS_DOMAIN" }}'
+      authelia_url: 'https://auth.{{ env "APPS_DOMAIN" }}'
+
+storage:
+  local:
+    path: /data/db.sqlite3
+
+# No mail server: messages (e.g. for 2FA code) are written to this file instead
+notifier:
+  filesystem:
+    filename: /data/notification.txt

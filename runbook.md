@@ -23,33 +23,37 @@ What cloud-init takes care of:
 | R6     | ufw: only 22, 80, 443                                                                     | `sudo ufw status`                                           |
 | R7     | `/srv/platform`, `/srv/apps`, `/srv/backups` with matching owners                         | `ls -ld /srv/*`                                             |
 
-### S2 Platform files onto the server
+### S2 DNS
+- **Intent:** `*.apps.<domain>` point to the server IP.
+- **Command (2026-10):** Cloudflare → `<domain>` → DNS → Records: Name `*.apps` Type `A` → `<server IPv4>`, Proxy status **DNS only**
+- **Check:** `dig +short anything.apps.<domain>` returns the server IP.
+
+### S3 Platform files and secrets
 - **Intent:** The contents of `platform/` live in `/srv/platform/`. Secrets are created only on the server, never in the repo.
-- **Command (2026-09):**
+- **Command (2026-10):**
   ```sh
-  rsync -av --exclude '.env' \
+  rsync -av --exclude '.env' --exclude 'authelia/users.yml' \
     platform/ admin@<server>:/srv/platform/
   ```
-  Then on the server: copy `.env.example` → `.env` and fill in (secrets: `openssl rand -hex 64`). `chmod 600 .env`.
+  Then on the server in `/srv/platform`:
+    1. Copy `.env.example` → `.env` and fill in (secrets: `openssl rand -hex 64`). `chmod 600 .env`.
+    2. Create the Authelia users file (Authelia does not start without it):
+    ```sh
+    docker compose run --rm authelia authelia crypto hash generate argon2
+    cp authelia/users.yml.example authelia/users.yml  # insert user + hash
+    chmod 600 authelia/users.yml
+    ```
 - **Check:** `docker compose -f /srv/platform/compose.yml config` runs without errors.
 
-### S3 Start Caddy
-- **Intent:** Caddy accepts requests and picks up containers via labels.
-- **Command (2026-09):** `cd /srv/platform && docker compose up -d`
-- **Check:** `docker compose ps` shows `caddy` as `running`. Then a throwaway container over plain HTTP (no DNS/TLS needed yet):
-  ```sh
-  docker run -d --rm --name whoami --network platform \
-    --label caddy=http://whoami.test \
-    --label 'caddy.reverse_proxy={{upstreams 80}}' \
-    traefik/whoami
-  curl -H 'Host: whoami.test' http://<server>  # whoami output (Hostname, IP, headers)
-  docker stop whoami
-  ```
+### S4 Start the platform
+- **Intent:** Caddy accepts requests and picks up containers via labels; Authelia serves the login page at `auth.apps.<domain>`.
+- **Command (2026-10):** `cd /srv/platform && docker compose up -d`
+- **Check:** `docker compose ps` shows `caddy` as `running` and `authelia` as `healthy`; `https://auth.apps.<domain>` shows the login page.
 
-### S4 Domain and HTTPS
-- **Intent:** `*.apps.<domain>` point to the server IP; Caddy obtains certificates.
-- **Command (2026-10):** Cloudflare → `<domain>` → DNS → Records: Name `*.apps` Type `A` → `<server IPv4>`, Proxy status **DNS only**
-- **Check:** `dig +short anything.apps.<domain>` returns the server IP. Then the same throwaway container but with the real hostname:
+
+### S5 End-to-end check with a throwaway container
+- **Intent:** An app gets HTTPS just by its labels, and a protected is only reachable after login. One login is valid for all `*.apps.<domain>`.
+- **Command (2026-10):** On the server, first unprotected:
   ```sh
   docker run -d --rm --name whoami --network platform \
     --label caddy=whoami.apps.<domain> \
@@ -58,3 +62,14 @@ What cloud-init takes care of:
   curl -I https://whoami.apps.<domain>  # 200, valid certificate
   docker stop whoami
   ```
+  Then protected:
+  ```sh
+  docker run -d --rm --name whoami --network platform \
+    --label caddy=whoami.apps.<domain> \
+    --label caddy.import=authelia \
+    --label 'caddy.reverse_proxy={{upstreams 80}}' \
+    traefik/whoami
+  curl -I https://whoami.apps.<domain>  # 302 to auth.apps.<domain>
+  docker stop whoami
+  ```
+- **Check:** In the browser: open `whoami.apps.<domain>`, log in with username and password.

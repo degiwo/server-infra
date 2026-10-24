@@ -3,3 +3,10 @@
 {
 	email {$ACME_EMAIL}
 }
+
+# Opt-in protection with Authelia: use the label `caddy.import=authelia` on the app container (see README)
+(authelia) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+	}
+}
