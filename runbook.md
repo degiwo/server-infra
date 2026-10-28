@@ -21,7 +21,7 @@ What cloud-init takes care of:
 | R4     | Docker installed, deploy user may use Docker (equivalent to root – accepted deliberately) | `docker info` as deploy                                     |
 | R5     | Container logs rotate (3 × 10 MB)                                                         | `cat /etc/docker/daemon.json`                               |
 | R6     | ufw: only 22, 80, 443                                                                     | `sudo ufw status`                                           |
-| R7     | `/srv/platform`, `/srv/apps`, `/srv/backups` with matching owners                         | `ls -ld /srv/*`                                             |
+| R7     | `/srv/platform`, `/srv/apps`, `/srv/backups` with matching owners                         | `ls -ld /srv/* /srv/backups/*`                              |
 
 ### S2 DNS
 - **Intent:** `*.apps.<domain>` point to the server IP.

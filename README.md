@@ -30,6 +30,14 @@ Manage users and groups in the LLDAP web UI at `https://users.<APPS_DOMAIN>`, wh
 
 ## Opt-in protection of apps
 
-An app is only behind the Authelia login if its container has the label `caddy.import=authelia`. Without it, the app is publicly accessible.
+An app is only behind the Authelia login if its container has the label `caddy.import=authelia`. For protected apps, Caddy passes the logged-in user to the app as the headers.
+Without it, the app is publicly accessible.
 
 The label references the `(authelia)` snippet in the Caddyfile by name.
+
+## Deploy access
+
+All app repos deploy via SSH as the `deploy` user with the same key (`DEPLOY_SSH_PUBKEY`) - this is accepted deliberately.
+Consquences:
+- Store the private key only as a GitHub Actions secret, never in a repo.
+- If the key leaks: replace the key in `~deploy/.ssh/authorized_keys` and in the secrets of all repos.

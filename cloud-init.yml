@@ -68,7 +68,7 @@ runcmd:
   # [R7] Directories
   - "mkdir -p /srv/platform /srv/apps /srv/backups/dumps /srv/backups/snapshots"
   - "chown admin:admin /srv/platform"
-  - "chown deploy:deploy /srv/apps /srv/backups/snapshots"
+  - "chown deploy:deploy /srv/apps /srv/backups/dumps /srv/backups/snapshots"
   - "chmod 750 /srv/backups/dumps"
 
   - "systemctl restart ssh"
